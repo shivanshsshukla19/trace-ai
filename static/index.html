@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TraceAI — C++ DSA Code Auditor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #0b0f19; }
+    pre, code, textarea { font-family: 'Fira Code', monospace; }
+    pre { white-space: pre !important; word-wrap: normal !important; overflow-x: auto !important; }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-[#111726]/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+        <i class="fa-solid fa-bolt"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight">Trace<span class="text-indigo-400">AI</span></h1>
+        <p class="text-xs text-slate-400">Algorithmic Complexity & Edge-Case Auditor</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Multi-Engine Active
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Left Column: Input Editor -->
+    <div class="flex flex-col gap-4 bg-[#111726] border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Language</label>
+          <select id="language" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="cpp">C++ (Modern STL)</option>
+            <option value="python">Python 3</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">LeetCode Constraint (N)</label>
+          <input id="maxN" type="text" placeholder="e.g. N <= 10^5" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-slate-600">
+        </div>
+      </div>
+
+      <div class="relative flex-1 min-h-[380px] flex flex-col">
+        <textarea id="codeInput" spellcheck="false" class="w-full flex-1 bg-[#090d16] border border-slate-800 rounded-xl p-4 text-sm text-slate-200 outline-none focus:border-indigo-500 resize-none leading-relaxed transition-all" placeholder="// Paste your C++ function or DSA code here...
+bool hasDuplicate(int arr[], int n) {
+    for(int i = 0; i < n; i++) {
+        for(int j = i + 1; j < n; j++) {
+            if(arr[i] == arr[j]) return true;
+        }
+    }
+    return false;
+}"></textarea>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <button id="sampleBtn" class="text-xs text-slate-400 hover:text-slate-200 transition-colors">
+          <i class="fa-solid fa-arrow-rotate-left mr-1"></i> Load sample code
+        </button>
+        <button id="analyzeBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm px-6 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all active:scale-95">
+          <i class="fa-solid fa-microchip"></i>
+          <span>Run Trace Audit</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Column: Audit Results -->
+    <div class="flex flex-col gap-4 bg-[#111726] border border-slate-800/80 rounded-2xl p-5 shadow-xl min-h-[460px]">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-emerald-400"></i>
+          <span class="font-semibold text-sm">Audit Report</span>
+        </div>
+        <span id="statusBadge" class="text-xs text-slate-500">Awaiting submission</span>
+      </div>
+
+      <!-- Idle Empty State -->
+      <div id="emptyState" class="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500">
+        <i class="fa-solid fa-terminal text-4xl mb-3 opacity-30"></i>
+        <p class="text-sm">Enter a function on the left and click <br><span class="text-slate-300 font-medium">"Run Trace Audit"</span> to inspect edge cases and complexity.</p>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loadingState" class="hidden flex-1 flex flex-col items-center justify-center text-center p-8">
+        <div class="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+        <p class="text-sm font-medium text-slate-300">Auditing logic & boundary conditions...</p>
+        <p class="text-xs text-slate-500 mt-1">Simulating constraint scale & asymptotic limits</p>
+      </div>
+
+      <!-- Results View -->
+      <div id="resultsView" class="hidden flex-col gap-4 overflow-y-auto max-h-[600px] pr-1">
+
+        <!-- TLE Judge Alert Banner -->
+        <div id="tleBanner" class="rounded-xl p-3.5 flex gap-3 items-center">
+          <i id="tleIcon" class="text-lg"></i>
+          <div>
+            <div id="tleTitle" class="text-xs font-bold uppercase tracking-wider"></div>
+            <p id="tleVerdict" class="text-xs mt-0.5 leading-snug"></p>
+          </div>
+        </div>
+
+        <!-- Complexity Metrics Cards -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-[#090d16] border border-slate-800 rounded-xl p-3.5">
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Time Complexity</span>
+            <div id="resTime" class="text-xl font-bold text-amber-400 mt-1"></div>
+            <p id="resTimeReason" class="text-xs text-slate-400 mt-1.5 leading-snug"></p>
+          </div>
+          <div class="bg-[#090d16] border border-slate-800 rounded-xl p-3.5">
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Space Complexity</span>
+            <div id="resSpace" class="text-xl font-bold text-sky-400 mt-1"></div>
+            <p id="resSpaceReason" class="text-xs text-slate-400 mt-1.5 leading-snug"></p>
+          </div>
+        </div>
+
+        <!-- Takeaway Insight Banner -->
+        <div class="bg-indigo-950/40 border border-indigo-800/40 rounded-xl p-3.5 flex gap-3 items-start">
+          <i class="fa-solid fa-lightbulb text-indigo-400 mt-0.5"></i>
+          <div>
+            <div class="text-xs font-semibold text-indigo-300 uppercase">Key Interview Takeaway</div>
+            <p id="resTakeaway" class="text-xs text-slate-300 mt-1 leading-relaxed"></p>
+          </div>
+        </div>
+
+        <!-- Edge Cases List -->
+        <div>
+          <span class="text-xs uppercase tracking-wider font-semibold text-rose-400 flex items-center gap-1.5 mb-2">
+            <i class="fa-solid fa-triangle-exclamation"></i> Unhandled Edge Cases & Pitfalls
+          </span>
+          <div id="edgeCasesContainer" class="flex flex-col gap-2"></div>
+        </div>
+
+        <!-- Optimized Code Block with Copy Button -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs uppercase tracking-wider font-semibold text-emerald-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Optimized Idiomatic Refactor
+            </span>
+            <button id="copyCodeBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors">
+              <i class="fa-regular fa-copy"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+          <div class="rounded-xl overflow-hidden border border-slate-800 bg-[#090d16]">
+            <pre class="p-4 text-xs leading-relaxed"><code id="resOptimizedCode" class="language-cpp"></code></pre>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    const sampleSnippet = `bool hasDuplicate(int arr[], int n) {
+    for(int i = 0; i < n; i++) {
+        for(int j = i + 1; j < n; j++) {
+            if(arr[i] == arr[j]) return true;
+        }
+    }
+    return false;
+}`;
+
+    const codeInput = document.getElementById('codeInput');
+    const maxN = document.getElementById('maxN');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const sampleBtn = document.getElementById('sampleBtn');
+    const copyCodeBtn = document.getElementById('copyCodeBtn');
+    const emptyState = document.getElementById('emptyState');
+    const loadingState = document.getElementById('loadingState');
+    const resultsView = document.getElementById('resultsView');
+    const statusBadge = document.getElementById('statusBadge');
+
+    sampleBtn.addEventListener('click', () => {
+      codeInput.value = sampleSnippet;
+      maxN.value = "N <= 10^5";
+    });
+
+    copyCodeBtn.addEventListener('click', async () => {
+      const codeText = document.getElementById('resOptimizedCode').textContent;
+      await navigator.clipboard.writeText(codeText);
+      copyCodeBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> <span class="text-emerald-400">Copied!</span>';
+      setTimeout(() => {
+        copyCodeBtn.innerHTML = '<i class="fa-regular fa-copy"></i> <span>Copy</span>';
+      }, 2000);
+    });
+
+    analyzeBtn.addEventListener('click', async () => {
+      const code = codeInput.value.trim();
+      if (!code) {
+        alert("Please enter a code snippet to analyze.");
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      resultsView.classList.add('hidden');
+      loadingState.classList.remove('hidden');
+      statusBadge.textContent = "Auditing...";
+      statusBadge.className = "text-xs text-amber-400 font-medium";
+
+      try {
+        const response = await fetch('/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: code,
+            language: document.getElementById('language').value,
+            max_n: maxN.value.trim()
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || "Error connecting to model.");
+        }
+
+        const data = await response.json();
+        renderResults(data);
+      } catch (err) {
+        alert("Analysis failed: " + err.message);
+        emptyState.classList.remove('hidden');
+      } finally {
+        loadingState.classList.add('hidden');
+      }
+    });
+
+    function cleanString(raw) {
+      if (!raw) return '';
+      return raw
+        .replace(/\\r\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '    ');
+    }
+
+    function renderResults(data) {
+      // TLE Banner
+      const tleBanner = document.getElementById('tleBanner');
+      const tleIcon = document.getElementById('tleIcon');
+      const tleTitle = document.getElementById('tleTitle');
+      const tleVerdict = document.getElementById('tleVerdict');
+
+      if (data.tle_risk) {
+        tleBanner.className = "rounded-xl p-3.5 flex gap-3 items-center bg-rose-950/40 border border-rose-800/40 text-rose-300";
+        tleIcon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-lg";
+        tleTitle.textContent = "Judge Verdict: Time Limit Exceeded (TLE) Risk";
+      } else {
+        tleBanner.className = "rounded-xl p-3.5 flex gap-3 items-center bg-emerald-950/40 border border-emerald-800/40 text-emerald-300";
+        tleIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+        tleTitle.textContent = "Judge Verdict: Within Execution Limits";
+      }
+      tleVerdict.textContent = data.tle_verdict;
+
+      // Complexities
+      document.getElementById('resTime').textContent = data.time_complexity;
+      document.getElementById('resTimeReason').textContent = data.time_complexity_reasoning;
+      document.getElementById('resSpace').textContent = data.space_complexity;
+      document.getElementById('resSpaceReason').textContent = data.space_complexity_reasoning;
+      document.getElementById('resTakeaway').textContent = data.key_takeaway;
+
+      // Edge cases
+      const container = document.getElementById('edgeCasesContainer');
+      container.innerHTML = '';
+      (data.edge_cases || []).forEach(ec => {
+        const div = document.createElement('div');
+        div.className = "bg-[#090d16] border border-rose-950/40 rounded-xl p-3";
+        div.innerHTML = `
+          <div class="text-xs font-semibold text-rose-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-exclamation text-[10px]"></i> ${cleanString(ec.scenario)}
+          </div>
+          <p class="text-xs text-slate-400 mt-1"><span class="text-slate-300 font-medium">Impact:</span> ${cleanString(ec.impact)}</p>
+          <p class="text-xs text-emerald-400 mt-1"><span class="text-slate-300 font-medium">Fix:</span> ${cleanString(ec.fix_suggestion)}</p>
+        `;
+        container.appendChild(div);
+      });
+
+      // Code rendering
+      const codeEl = document.getElementById('resOptimizedCode');
+      codeEl.removeAttribute('data-highlighted');
+      codeEl.textContent = cleanString(data.optimized_code);
+      hljs.highlightElement(codeEl);
+
+      statusBadge.textContent = "Completed";
+      statusBadge.className = "text-xs text-emerald-400 font-medium";
+      resultsView.classList.remove('hidden');
+      resultsView.classList.add('flex');
+    }
+  </script>
+</body>
+</html>
